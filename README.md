@@ -6,7 +6,7 @@ Copies `owner` custom attribute in vCenter to `owner` tag in NetApp OnCommand In
 Requirements
 ------------
 
-Any pre-requisites that may not be covered by Ansible itself or the role should be mentioned here. For instance, if the role uses the EC2 module, it may be a good idea to mention in this section that the boto package is required.
+As of now, this role is only compatible with Ansible < 2.8 because of a change in the way vmware plugin returns the list of VMs.
 
 Role Variables
 --------------
