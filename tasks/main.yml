@@ -1,0 +1,134 @@
+---
+# This play retrieves all the "owner" tags in the given vCenter inventory
+# And sends it as an annotation in OCI Server.
+#
+# It expects the following vars :
+# oci_host: Hostname of OCI server
+# oci_username: OCI user
+# oci_password: OCI password
+# oci_query_id: OCI Query ID that returns the VirtualMachines that will get the Annotation
+#               Make sure the "Owner" column is present in that query result
+# oci_annotation_id: Annotation ID to use for Owner
+
+# Get all the VMs from vCenter, basic facts
+- name: Get All VMs
+  vmware_vm_facts:
+    hostname: "{{ vcenter_hostname | default(lookup('env','VMWARE_HOST')) }}"
+    username: "{{ vcenter_username | default(lookup('env','VMWARE_USER')) }}"
+    password: "{{ vcenter_password | default(lookup('env','VMWARE_PASSWORD')) }}"
+    vm_type: vm
+  register: vm_facts
+
+# Iterate over all the VMs and gather complete facts
+# This is where we get "customvalues" from, later
+# We ignore VMs without UUID (orphaned)
+- name: Get VM facts
+  vmware_guest_facts:
+    hostname: "{{ vcenter_hostname | default(lookup('env','VMWARE_HOST')) }}"
+    username: "{{ vcenter_username | default(lookup('env','VMWARE_USER')) }}"
+    password: "{{ vcenter_password | default(lookup('env','VMWARE_PASSWORD')) }}"
+    datacenter: "{{ vcenter_datacenter }}"
+    uuid: "{{ item.Properties.uuid }}"
+  register: guestfacts
+  with_items: "{{ vm_facts.virtual_machines | dict2items | json_query('[?value.uuid != Null].{ Name: key Properties: value }') }}"
+  loop_control:
+    label: "{{ item.Properties.uuid }} {{ item.Name }}"
+
+# Build facts with VM informations
+# to_json | from_json is necessary to normalize types, and avoid jmespath bug and choke on AnsibleUnicode type
+- name: Set VM owner fact
+  set_fact:
+    vm_owners: "{{ guestfacts.results | to_json | from_json | json_query(query) | items2dict(key_name='Name', value_name='Owner') }}"
+  vars:
+    # This query builds a hash with "Datacenter/Cluster/VMname" as key and owner tag as value
+    query: "[*].{ Name:join('/',['{{ vcenter_datacenter }}',item.Properties.cluster,instance.hw_name]) Owner:instance.customvalues.owner }"
+
+# Log the dict containing owners for every VM in vcenter
+- name: Display VM owners
+  debug:
+    var: vm_owners
+
+# Get OCI Annotation ID from the Annotation name given as a var
+- name: Get OCI annotation Name
+  uri:
+    url: "https://{{ oci_host }}/rest/v1/assets/annotations"
+    user: "{{ oci_username }}"
+    password: "{{ oci_password }}"
+    force_basic_auth: yes
+  register: annotations
+- name: Get annotation name
+  set_fact:
+    _annotationName: "{{ annotations.json | json_query(query) }}"
+  vars:
+    query: "[?id=='{{ oci_annotation_id }}'].name|[0]"
+
+# Get all the VMs for the configured Query.
+# Note, maxing out "limit" is probably a bad idea, needs improvement (a loop using offset and limit)
+- name: Get VMs inventory
+  uri:
+    url: "https://{{ oci_host }}/rest/v1/queries/{{ oci_query_id }}/result?limit=500000"
+    user: "{{ oci_username }}"
+    password: "{{ oci_password }}"
+    force_basic_auth: yes
+  register: inventory
+
+# Set annotations for VMs having one
+- name: Set OCI annotation
+  uri:
+    method: PUT
+    body_format: json
+    url: "https://{{ oci_host }}/rest/v1/assets/virtualMachines/{{ item.id }}/annotations"
+    body: '
+      [
+        {
+          "rawValue":"{{ vm_owner }}",
+          "definition":
+            { 
+              "id": "{{ oci_annotation_id }}"
+            }
+        }
+      ]'
+    user: "{{ oci_username }}"
+    password: "{{ oci_password }}"
+    force_basic_auth: yes
+  vars:
+    vm_long_name: "{{ item.host.clusterName }}/{{ item.name }}"
+    vm_owner: "{{ vm_owners[vm_long_name] | default('') }}"
+  with_items: "{{ inventory.json.results }}"
+  when:
+    - vm_owner | length > 0 # Only when the owner isn't empty
+    - vm_owner != " " # And is not a single space
+    - (item.annotationValues[_annotationName] | default('')) != vm_owner # And is different from the current one in OCI
+  changed_when: True
+  loop_control:
+    label: "{{ vm_long_name }} : {{ vm_owner }}"
+
+# Delete annotation for VMs *not* having one
+- name: Delete OCI annotation
+  uri:
+    method: DELETE
+    body_format: json
+    url: "https://{{ oci_host }}/rest/v1/assets/virtualMachines/{{ item.id }}/annotations"
+    body: '
+      [
+        {
+          "definition":
+            { 
+              "id": "{{ oci_annotation_id }}"
+            }
+        }
+      ]'
+    user: "{{ oci_username }}"
+    password: "{{ oci_password }}"
+    force_basic_auth: yes
+  vars:
+    vm_long_name: "{{ item.host.clusterName }}/{{ item.name }}"
+    vm_owner: "{{ vm_owners[vm_long_name] | default('') }}"
+  with_items: "{{ inventory.json.results }}"
+  when:
+    - vm_owners[vm_long_name] is defined # Only when there the VM exists
+    - vm_owner | length == 0  or vm_owner == " " # And there is no owner
+    - item.annotationValues[_annotationName] is defined # And there is one currently in OCI
+  changed_when: True
+  loop_control:
+    label: "No Owner for {{ vm_long_name }}"
