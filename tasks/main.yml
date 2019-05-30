@@ -21,11 +21,6 @@
 
 # Account for a change in Ansible 2.8 regarding vm facts
 # VM facts are now returned as an array instead of a dict
-<<<<<<< HEAD
-    
-=======
-
->>>>>>> 883944a4be6ac007aeaff5cc210742fc5b3876cf
 - name: Normalize facts (Ansible < 2.8)
   set_fact:
     all_vms: "{{ vm_facts.virtual_machines | dict2items | json_query('[?value.uuid != Null].{ Name: key Properties: value }') }}"
