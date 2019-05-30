@@ -6,7 +6,9 @@ Copies `owner` custom attribute in vCenter to `owner` tag in NetApp OnCommand In
 Requirements
 ------------
 
-As of now, this role is only compatible with Ansible < 2.8 because of a change in the way vmware plugin returns the list of VMs.
+You need a fully operational OCI server and vCenter server, as well as credentials for each.
+
+Tested with Ansible 2.7 and 2.8.
 
 Role Variables
 --------------
