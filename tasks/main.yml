@@ -1,6 +1,6 @@
 ---
 # This play retrieves all the "owner" tags in the given vCenter inventory
-# And sends it as an annotation in OCI Server.
+# and sends it as an annotation in OCI Server.
 #
 # It expects the following vars :
 # oci_host: Hostname of OCI server
