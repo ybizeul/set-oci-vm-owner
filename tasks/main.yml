@@ -83,7 +83,7 @@
         {
           "rawValue":"{{ vm_owner }}",
           "definition":
-            { 
+            {
               "id": "{{ oci_annotation_id }}"
             }
         }
@@ -113,7 +113,7 @@
       [
         {
           "definition":
-            { 
+            {
               "id": "{{ oci_annotation_id }}"
             }
         }
