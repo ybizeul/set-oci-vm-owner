@@ -69,7 +69,7 @@ vCenter credentials usually comes from the inventory file.
         uri:
           validate_certs: no
       roles:
-        - lab-set-oci-vm-owner
+        - ybizeul.set_oci_vm_owner
 
     $ ansible-playbook -i inventory.yaml set-oci-vm-owner.yaml 
 
