@@ -21,6 +21,8 @@ Role Variables
 
 `vcenter_datacenter` : Name of Datacenter as defined in vCenter Server top level object.
 
+`vcenter_custom_attribute` : Name of the attribute in vCenter that will be set in OCI annotation
+
 `oci_host`  : Host name or IP address of OCI server
 
 `oci_username` : Username to use when connecting to OCI server
@@ -61,6 +63,7 @@ vCenter credentials usually comes from the inventory file.
         oci_host: ociServer
         oci_query_id: 67
         oci_annotation_id: 5012
+        vcenter_custom_attribute: owner
       module_defaults:
         vmware_vm_facts:
           validate_certs: no
