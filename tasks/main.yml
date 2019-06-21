@@ -28,7 +28,7 @@
   when: ansible_version.major * 10 + ansible_version.minor < 28
 - name: Normalize facts (Ansible 2.8)
   set_fact:
-    all_vms: "{{ vm_facts.virtual_machines[:10] | json_query('[?uuid != Null].{ Name: guest_name Properties: @ }') }}"
+    all_vms: "{{ vm_facts.virtual_machines | json_query('[?uuid != Null].{ Name: guest_name Properties: @ }') }}"
   when: result is skipped
 
 - name: Extract Sample
