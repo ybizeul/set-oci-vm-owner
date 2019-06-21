@@ -35,7 +35,7 @@
   set_fact:
     all_vms: "{{ all_vms | json_query('[:10]') }}"
   when: test_batch is defined
-      
+
 # Iterate over all the VMs and gather complete facts
 # This is where we get "customvalues" from, later
 # We ignore VMs without UUID (orphaned)
@@ -59,7 +59,10 @@
     vm_owners: "{{ guestfacts.results | to_json | from_json | json_query(query) | items2dict(key_name='Name', value_name='Owner') }}"
   vars:
     # This query builds a hash with "Datacenter/Cluster/VMname" as key and owner tag as value
-    query: "[*].{ Name:join('/',['{{ vcenter_datacenter }}',item.Properties.cluster,instance.hw_name]) Owner:instance.customvalues.{{ vcenter_custom_attribute}} }"
+    query: "[*].{
+      Name:join('/',['{{ vcenter_datacenter }}',item.Properties.cluster,instance.hw_name])
+      Owner:instance.customvalues.{{ vcenter_custom_attribute }} 
+      }"
 
 # Log the dict containing owners for every VM in vcenter
 - name: Display VM owners
