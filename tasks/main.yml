@@ -61,7 +61,7 @@
     # This query builds a hash with "Datacenter/Cluster/VMname" as key and owner tag as value
     query: "[*].{
       Name:join('/',['{{ vcenter_datacenter }}',item.Properties.cluster,instance.hw_name])
-      Owner:instance.customvalues.{{ vcenter_custom_attribute }} 
+      Owner:instance.customvalues.{{ vcenter_custom_attribute }}
       }"
 
 # Log the dict containing owners for every VM in vcenter
